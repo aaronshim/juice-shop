@@ -1,3 +1,15 @@
+# Patched Development Server
+
+To run the development server with live-reloading for both frontend and backend changes, please use the following command:
+
+```bash
+npm run serve:dev
+```
+
+This will ensure that all code modifications are applied immediately without needing to manually restart the server. The application will be available at <http://localhost:3000>.
+
+---
+
 # ![Juice Shop Logo](https://raw.githubusercontent.com/juice-shop/juice-shop/master/frontend/src/assets/public/images/JuiceShop_Logo_100px.png) OWASP Juice Shop
 
 [![OWASP Flagship](https://img.shields.io/badge/owasp-flagship%20project-48A646.svg)](https://owasp.org/projects/#sec-flagships)

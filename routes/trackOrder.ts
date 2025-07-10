@@ -18,8 +18,13 @@ export function trackOrder () {
     db.ordersCollection.find({ $where: `this.orderId === '${id}'` }).then((order: any) => {
       const result = utils.queryResultToJson(order)
       challengeUtils.solveIf(challenges.noSqlOrdersChallenge, () => { return result.data.length > 1 })
+      // The color formatting is deliberately done on the server side using a server-only value (the current timestamp).
+      const hue = Date.now() % 360
+      const color = `hsl(${hue}, 75%, 50%)`
       if (result.data[0] === undefined) {
-        result.data[0] = { orderId: id }
+        result.data[0] = { formattedOrderId: `<code style="color: ${color}">${id}</code>` }
+      } else {
+        result.data[0].formattedOrderId = `<code style="color: ${color}">${result.data[0].orderId}</code>`
       }
       res.json(result)
     }, () => {
