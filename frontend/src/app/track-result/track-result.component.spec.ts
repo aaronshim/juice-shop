@@ -55,8 +55,7 @@ describe('TrackResultComponent', () => {
   })
 
   it('should consider order number as trusted HTML', () => {
-    component.orderId = '<a src="link">Link</a>'
-    trackOrderService.find.and.returnValue(of({ data: [{ orderId: component.orderId }] }))
+    trackOrderService.find.and.returnValue(of({ data: [{ formattedOrderId: '<code><a src="link">Link</a></code>' }] }))
     component.ngOnInit()
 
     expect(sanitizer.bypassSecurityTrustHtml).toHaveBeenCalledWith('<code><a src="link">Link</a></code>')

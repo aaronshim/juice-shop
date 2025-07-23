@@ -92,7 +92,7 @@ This section details the key code locations that support the conclusions of the 
         template = template.replace(/_username_/g, username)
         // ...
         const fn = pug.compile(template)
-        res.send(fn(user)
+        res.send(fn(user));
         ```
 
 *   **Persisted XSS via User Feedback (Newly Discovered Vector):**
@@ -108,7 +108,7 @@ This section details the key code locations that support the conclusions of the 
         this.galleryRef.addImage({
           src: ...,
           args: feedbacks[i].comment // This is rendered by innerHTML
-        })
+        });
         ```
 
 *   **Verification of CAPCHA Generation (Benign `innerHTML`):**
@@ -125,7 +125,7 @@ This section details the key code locations that support the conclusions of the 
           image: captcha.data, // The generated SVG
           answer: captcha.text,
           // ...
-        }
+        };
         ```
 
 ## 6. Implementation Plan: Demonstrating `safevalues` with New XSS Vectors
@@ -198,9 +198,30 @@ This section provides a definitive list of the primary builder and sanitization 
 
 ## 8. Testing Infrastructure
 
-The project has a robust testing setup for the frontend, which provides a safety net for changes and a pattern for new tests.
+The project has a robust testing setup which provides a safety net for changes and a pattern for new tests. The test suites can be run with the following commands:
 
-### a. Unit Tests
+*   **All Tests (Frontend Unit & Server-side):**
+    ```bash
+    npm test
+    ```
+*   **Frontend Unit Tests only:**
+    ```bash
+    cd frontend && npm test
+    ```
+*   **Server-side Tests only:**
+    ```bash
+    npm run test:server
+    ```
+*   **End-to-End Tests:**
+    1.  Start the server: `npm run serve:dev`
+    2.  In a separate terminal, run Cypress: `npm run cypress:run`
+
+A common issue when running server-side tests is a native module compilation error with `libxmljs2`. This is typically due to a Node.js version mismatch and can be resolved by running:
+```bash
+npm rebuild
+```
+
+### a. Frontend Unit Tests
 
 *   **Location:** Co-located with component files (`frontend/src/app/**/*.spec.ts`).
 *   **Frameworks:** Karma (test runner) and Jasmine (assertion framework).
@@ -225,7 +246,16 @@ The project has a robust testing setup for the frontend, which provides a safety
         }));
         ```
 
-### b. End-to-End (E2E) Tests
+### b. Server-side Tests
+
+*   **Location:** `test/server/**/*.ts`.
+*   **Framework:** Mocha.
+*   **Key Patterns & Observations:**
+    *   The tests cover the application's backend routes and utilities.
+    *   They perform checks for security vulnerabilities, configuration validation, and business logic.
+    *   The tests frequently use `chai` for assertions and may involve direct interaction with the server or its components.
+
+### c. End-to-End (E2E) Tests
 
 *   **Location:** `test/cypress/e2e/**/*.spec.ts`.
 *   **Framework:** Cypress.
