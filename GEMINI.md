@@ -1,6 +1,6 @@
 # Gemini CLI: Juice Shop Application Context
 
-This document summarizes the key user flows and architectural patterns of the OWASP Juice Shop's Angular frontend, based on a codebase analysis.
+This document summarizes the key user flows, architectural patterns, and security analysis of the OWASP Juice Shop application. It also contains a detailed plan for introducing new features to demonstrate common XSS vulnerabilities and their mitigation using the `safevalues` library.
 
 ## 1. Overall Architecture & Routing
 
@@ -92,7 +92,7 @@ This section details the key code locations that support the conclusions of the 
         template = template.replace(/_username_/g, username)
         // ...
         const fn = pug.compile(template)
-        res.send(fn(user))
+        res.send(fn(user)
         ```
 
 *   **Persisted XSS via User Feedback (Newly Discovered Vector):**
@@ -111,7 +111,7 @@ This section details the key code locations that support the conclusions of the 
         })
         ```
 
-*   **Verification of CAPTCHA Generation (Benign `innerHTML`):**
+*   **Verification of CAPCHA Generation (Benign `innerHTML`):**
     *   **Location:** `routes/imageCaptcha.ts`
     *   **Analysis:** The `/rest/image-captcha` endpoint uses the `svg-captcha` library to generate CAPTCHAs. The `svgCaptcha.create()` function is called with hardcoded parameters. No user-controlled input is used in the SVG generation process, making the resulting SVG safe to render via `innerHTML`.
     *   **Key Snippet:**
@@ -130,21 +130,119 @@ This section details the key code locations that support the conclusions of the 
 
 ## 6. Implementation Plan: Demonstrating `safevalues` with New XSS Vectors
 
-This section outlines a strategic plan to introduce five new, plausible features, each containing a distinct XSS vulnerability. The goal is to create a "before and after" scenario where each vulnerability can be fixed by applying a specific `safevalues` pattern, thereby demonstrating its utility and covering a range of modern web security challenges.
+This section outlines a strategic plan to introduce six new, plausible features, each containing a distinct XSS vulnerability. The goal is to create a "before and after" scenario where each vulnerability can be fixed by applying a specific `safevalues` pattern, thereby demonstrating its utility and covering a range of modern web security challenges.
 
 ### a. Overall Strategy
-1.  **Introduce Client-Side Vulnerabilities:** Four vulnerabilities will be added to the existing client-side rendered Angular application.
+1.  **Introduce Client-Side Vulnerabilities:** Five vulnerabilities will be added to the existing client-side rendered Angular application.
 2.  **Introduce a Server-Side Vulnerability:** One vulnerability will be created in a **new, standalone Angular SSR application**. This will demonstrate a subtle but critical SSR-specific exploit (`TransferState` XSS) in an isolated environment.
 3.  **Integrate via Reverse Proxy:** The main Juice Shop Express server will be configured to act as a reverse proxy, forwarding requests to a specific route (e.g., `/profile-ssr`) to the new, standalone SSR micro-app.
 
 ### b. Detailed Feature & Vulnerability Plan
 
-| Feature | Location & Technology | Good-Faith Goal | The Mistake (Vulnerability) | The `safevalues` Principle to Fix It |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Recent Searches** | **Angular SPA** (Search Page) | Show a user their last 5 search terms. | Rendering raw search terms from `localStorage` with `innerHTML`, causing **persisted DOM XSS**. | **`htmlEscape`** |
-| **2. Rich Text Product Reviews** | **Angular SPA** (Product Details) | Allow users to submit reviews with rich formatting from a WYSIWYG editor. | Rendering the editor's HTML output directly with `innerHTML`, allowing malicious tags (`<script>`, `onerror`). | **HTML Sanitizer Process** |
-| **3. Product View Analytics** | **Angular SPA** (Product Details) | Track product views by passing the product name to a JS analytics function. | Building a script via unsafe string concatenation (`'track("' + product.name + '")'`), allowing quotes to break out and cause XSS. | **`safeScriptWithArgs`** |
-| **4. Profile Status Message** | **New Standalone Angular SSR App** | To improve performance, pre-fetch a user's "status message" on the server and pass it to the client using `TransferState`. | **State Transfer XSS:** A user's status message containing `</script>` is placed into `TransferState` without sanitization, breaking out of the state-transfer script block in the initial HTML. | **Server-Side Sanitization before State Transfer** |
-| **5. Custom Profile Theme** | **Angular SPA** (User Profile) | Allow users to set a custom background color for their profile header. | Injecting a user-provided string directly into an inline `style` attribute, allowing for **CSS Injection**. This can be used to exfiltrate data via `background-image: url(...)` requests. | **CSS Sanitization** (via `HtmlSanitizer` on the style attribute) & Input Validation |
+| Feature | Vulnerability Origin | The Mistake (Vulnerability) | The `safevalues` Principle to Fix It |
+| :--- | :--- | :--- | :--- |
+| **1. Recent Searches** | **Developer Mistake** | Rendering raw search terms from `localStorage` with `innerHTML`, causing **persisted DOM XSS**. | **`htmlEscape`** |
+| **2. Rich Text Product Reviews** | **Supply-Chain Vulnerability** (Insecure 3rd-party WYSIWYG editor) | Trusting the raw HTML output of a third-party library (`editor.getRawHtml()`) and rendering it with `innerHTML`, allowing malicious tags. | **HTML Sanitizer Process** |
+| **3. Product View Analytics** | **Developer Mistake** | Building a script via unsafe string concatenation (`'track("' + product.name + '")'`), allowing quotes to break out and cause XSS. | **`safeScriptWithArgs`** |
+| **4. Profile Status Message** | **SSR Framework Pitfall** | **State Transfer XSS:** Placing un-sanitized user data into `TransferState`, which is then serialized into the initial HTML, breaking out of the state-transfer script block. | **Server-Side Sanitization before State Transfer** |
+| **5. Custom Profile Theme** | **Developer Mistake** | Injecting a user-provided string directly into an inline `style` attribute, allowing for **CSS Injection** and data exfiltration. | **CSS Sanitization** (via `HtmlSanitizer`) & Input Validation |
+| **6. Live Product Preview** | **Developer Mistake** | On every input event, rendering raw text from a `textarea` directly into a `div` using `innerHTML`, causing **immediate, self-contained DOM XSS**. | **HTML Sanitizer Process** |
+
+### c. Real-World Parallels
+
+To ensure the planned features are believable, they are grounded in common patterns from well-known websites.
+
+*   **Recent Searches:** A ubiquitous feature on e-commerce sites like **Amazon** and **eBay** to improve user convenience.
+*   **Rich Text Product Reviews:** Common on review-centric platforms like **Amazon** and **Yelp**. The vulnerability simulates a developer incorrectly trusting the raw HTML output from a third-party WYSIWYG editor library.
+*   **Product View Analytics:** An invisible but universal practice on all e-commerce sites (**Shopify stores**, etc.) to send tracking events to services like Google Analytics.
+*   **Profile Status Message (SSR):** The feature itself is common to all social media (**LinkedIn**, **Twitter**, **Facebook**). The pattern of pre-fetching this content on the server is a standard performance optimization for any high-traffic site.
+*   **Custom Profile Theme:** A popular feature on platforms like **Discord** and **Twitter**. It's a modern, limited version of the extensive theming once offered by sites like **Myspace**.
+*   **Live Product Preview:** A cornerstone feature for the massive online market of customizable goods, used by sites like **Vistaprint** and **Shutterfly** to show customers a real-time preview of their personalized products.
+
+## 7. Enumeration of `safevalues` API Builders
+
+This section provides a definitive list of the primary builder and sanitization patterns found in the `safevalues` library, which are the target solutions for the vulnerabilities introduced in the implementation plan.
+
+### a. HTML Builders
+
+*   **`htmlEscape`**
+    *   **Purpose:** Safely renders untrusted plain text by escaping HTML-sensitive characters.
+    *   **Location:** `safevalues/src/builders/html_builders.ts`
+*   **`scriptToHtml`**
+    *   **Purpose:** Safely embeds a `SafeScript` object into a full `<script>` tag.
+    *   **Location:** `safevalues/src/builders/html_builders.ts`
+*   **`scriptUrlToHtml`**
+    *   **Purpose:** Safely embeds a `TrustedResourceUrl` into a `<script src="...">` tag.
+    *   **Location:** `safevalues/src/builders/html_builders.ts`
+*   **HTML Sanitizer**
+    *   **Purpose:** Parses and cleans an untrusted HTML string, removing unsafe elements and attributes (including dangerous CSS), and returns sanitized `SafeHtml`.
+    *   **Location:** `safevalues/src/builders/html_sanitizer/html_sanitizer.ts`
+
+### b. Script Builders
+
+*   **`safeScript` (Template Literal)**
+    *   **Purpose:** Creates `SafeScript` from a static string literal known to be safe at compile time.
+    *   **Location:** `safevalues/src/builders/script_builders.ts`
+*   **`valueAsScript`**
+    *   **Purpose:** Safely serializes a JavaScript object into a JSON string for embedding in a script, escaping characters like `<`.
+    *   **Location:** `safevalues/src/builders/script_builders.ts`
+*   **`safeScriptWithArgs` (Template Literal)**
+    *   **Purpose:** Separates trusted static code from untrusted dynamic data by creating a script that accepts the data as safely JSON-encoded arguments.
+    *   **Location:** `safevalues/src/builders/script_builders.ts`
+
+### c. URL Sanitizers
+
+*   **`sanitizeJavaScriptUrl` & `restrictivelySanitizeUrl`**
+    *   **Purpose:** Validate URL strings to prevent `javascript:` URLs and other dangerous schemes. This is the required validation step before a string can be treated as a `TrustedResourceUrl`.
+    *   **Location:** `safevalues/src/builders/url_builders.ts`
+
+## 8. Testing Infrastructure
+
+The project has a robust testing setup for the frontend, which provides a safety net for changes and a pattern for new tests.
+
+### a. Unit Tests
+
+*   **Location:** Co-located with component files (`frontend/src/app/**/*.spec.ts`).
+*   **Frameworks:** Karma (test runner) and Jasmine (assertion framework).
+*   **Key Patterns & Observations:**
+    *   **Isolation:** Components are tested in isolation from their dependencies. Services are mocked using `jasmine.createSpyObj` to provide predictable data and behavior.
+    *   **Asynchronous Testing:** `fakeAsync` and `tick()` are used to test asynchronous code, such as `Observable` subscriptions from services, in a synchronous and controllable manner.
+    *   **Component State:** Tests frequently assert the state of component properties and form controls (`.valid`, `.pristine`, etc.).
+    *   **Routing:** `RouterTestingModule` is used to test navigation logic, asserting that methods trigger the expected path changes.
+    *   **Storage:** Tests directly interact with `localStorage` and `sessionStorage` to verify that data (like tokens) is managed correctly.
+    *   **Code Snippet (`login.component.spec.ts`):
+        ```typescript
+        // Mocking the UserService
+        userService = jasmine.createSpyObj('UserService', ['login']);
+        userService.login.and.returnValue(of({})); // Mocking a successful login
+
+        // Testing navigation after an async operation
+        it('forwards to main page after successful login', fakeAsync(() => {
+          userService.login.and.returnValue(of({}));
+          component.login();
+          tick(); // Simulate passage of time for the Observable to resolve
+          expect(location.path()).toBe('/search');
+        }));
+        ```
+
+### b. End-to-End (E2E) Tests
+
+*   **Location:** `test/cypress/e2e/**/*.spec.ts`.
+*   **Framework:** Cypress.
+*   **Key Patterns & Observations:**
+    *   **User Journey Simulation:** Tests are structured around user stories and, uniquely, the application's security challenges. Each test simulates a user's actions from a black-box perspective.
+    *   **Security Exploit Testing:** A primary purpose of the E2E suite is to automate the process of solving the security challenges. Tests explicitly perform actions like SQL Injection to verify the vulnerabilities.
+    *   **DOM Interaction:** Cypress interacts with the application via CSS selectors (`cy.get('#email')`), user actions (`.type()`, `.click()`), and assertions (`.should()`).
+    *   **Custom Commands:** The suite uses custom commands like `cy.expectChallengeSolved()` to abstract away the logic of verifying that a challenge has been successfully completed.
+    *   **Code Snippet (`login.spec.ts`):
+        ```typescript
+        // Simulating a SQL Injection attack
+        it('should log in Admin with SQLI attack on email field using "\' or 1=1--"', () => {
+          cy.get('#email').type("' or 1=1--");
+          cy.get('#password').type('a');
+          cy.get('#loginButton').click();
+          // ... assertions to verify successful login
+        });
+        ```
 
 This plan provides a comprehensive roadmap for the implementation phase. The next step is to begin by scaffolding the new Angular SSR application.
