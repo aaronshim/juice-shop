@@ -65,3 +65,9 @@ config/*.yml
 
 # System Files
 .DS_Store
+.tool-versions
+
+# Test Artifacts
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/

@@ -13,6 +13,7 @@
         <span id="searchValue" [innerHTML]="searchValue"></span>
       </div>
       <div *ngIf="!searchValue">{{"TITLE_ALL_PRODUCTS" | translate}}</div>
+      <app-recent-searches></app-recent-searches>
       <div id="search-result-heading"></div>
     </div>
     <div *ngIf=" !emptyState; else emptyResult">

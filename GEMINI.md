@@ -159,6 +159,107 @@ To ensure the planned features are believable, they are grounded in common patte
 *   **Custom Profile Theme:** A popular feature on platforms like **Discord** and **Twitter**. It's a modern, limited version of the extensive theming once offered by sites like **Myspace**.
 *   **Live Product Preview:** A cornerstone feature for the massive online market of customizable goods, used by sites like **Vistaprint** and **Shutterfly** to show customers a real-time preview of their personalized products.
 
+## 6a. Detailed Implementation Scenarios
+
+This section provides a detailed, step-by-step guide for implementing each of the vulnerable features outlined in the plan, including a comprehensive testing strategy.
+
+### Scenario 1: Recent Searches - Detailed Plan (with Testing)
+
+The goal is to create a "Recent Searches" feature that is vulnerable to persisted DOM-XSS. The testing plan will verify both the feature's functionality and the existence of the vulnerability.
+
+---
+
+#### **Part A: Implementation Plan**
+
+**Step 1: Generate the `RecentSearches` Component**
+*   **Action:** Run `ng generate component recent-searches` from the `frontend` directory.
+*   **Status:** ✅ **Done**
+
+**Step 2: Implement Vulnerable Component Logic and Template**
+*   **File:** `frontend/src/app/recent-searches/recent-searches.component.ts`
+*   **Logic:** In `ngOnInit`, read a JSON array of strings from `localStorage.getItem('recentSearches')` and assign it to a public `recentSearches` property.
+*   **Status:** ✅ **Done**
+*   **File:** `frontend/src/app/recent-searches/recent-searches.component.html`
+*   **Template (Vulnerability Sink):** Use `*ngFor` to loop through the `recentSearches` array and render each term inside an `<li>` element using the `[innerHTML]` binding.
+*   **Status:** ✅ **Done**
+
+**Step 3: Modify `SearchResultComponent` to Store Search Terms**
+*   **File:** `frontend/src/app/search-result/search-result.component.ts`
+*   **Logic:** In the method that handles new searches, add logic to:
+    1.  Read the existing `recentSearches` from `localStorage`.
+    2.  Prepend the new search term to the array.
+    3.  Limit the array to the 5 most recent terms using `slice(0, 5)`.
+    4.  Write the updated array back to `localStorage` with `setItem`.
+*   **Status:** ✅ **Done**
+
+**Step 4: Integrate the New Component into the UI**
+*   **File:** `frontend/src/app/search-result/search-result.component.html`
+*   **Action:** Add the component's selector, `<app-recent-searches></app-recent-searches>`, to the search results page.
+*   **Status:** ✅ **Done**
+
+---
+
+#### **Part B: Testing Plan**
+
+After the implementation is complete, I will execute the following tests.
+
+**Step 5: Unit Tests**
+
+I will add unit tests to verify the logic of the two modified components in isolation.
+
+*   **For `RecentSearchesComponent` (`recent-searches.component.spec.ts`):**
+    *   **Test 1: Displaying Searches:** Mock `localStorage.getItem` to return a sample array of search terms. Verify that the component correctly reads this data and that the rendered HTML contains the expected `<li>` elements.
+    *   **Test 2: Handling No Searches:** Mock `localStorage.getItem` to return `null`. Verify that the component's view does not render the "Recent Searches" list.
+
+*   **For `SearchResultComponent` (`search-result.component.spec.ts`):**
+    *   **Test 1: Storing a New Search:** Mock `localStorage.getItem` and `localStorage.setItem`. Simulate a search and verify that `setItem` is called with a correctly formatted JSON string containing the new search term.
+    *   **Test 2: Appending and Limiting Searches:** Mock `localStorage.getItem` to return an array of 5 existing terms. Simulate a new search and verify that `setItem` is called with the new term at the beginning of the array and that the array's length is still 5.
+
+**Step 6: End-to-End (E2E) Test**
+
+I will create a new Cypress test file to simulate a user journey and confirm the vulnerability.
+
+*   **File:** `test/cypress/e2e/recentSearches.spec.ts`
+*   **Test 1: Functional Verification:**
+    1.  Visit the search page.
+    2.  Perform a search for a safe term (e.g., "apple").
+    3.  Reload the page.
+    4.  Assert that "apple" is visible in the "Recent Searches" list.
+*   **Test 2: Vulnerability Confirmation (XSS):**
+    1.  Visit the search page.
+    2.  Set up a Cypress spy to listen for a `window:alert` event.
+    3.  Perform a search using an XSS payload (e.g., `<img src=x onerror=alert('XSS')>`).
+    4.  Assert that the `window:alert` was triggered with the message 'XSS'. This will definitively prove that the `innerHTML` binding is executing the injected script.
+*   **Video Recording:** The `cypress run` command will automatically generate a video of this E2E test run, which will be saved in `cypress/videos/`. This video will serve as a clear visual record of the exploit.
+
+---
+
+#### **Part C: Post-Implementation Analysis & E2E Test Evolution**
+
+The development of a robust E2E test for this scenario was a complex process that revealed critical details about the application's architecture and the nature of the vulnerability.
+
+**Initial Findings & Flawed Assumptions:**
+1.  Our initial E2E tests failed because blocking payloads (`alert()`) hung the headless browser.
+2.  Subsequent tests revealed that the `RecentSearchesComponent` correctly sanitizes input by default, stripping `onerror` attributes.
+3.  This led to the discovery of the **true, original vulnerability**: a Reflected XSS in the `SearchResultComponent`, which explicitly used `DomSanitizer.bypassSecurityTrustHtml()` on the `q` search parameter from the URL.
+
+**Intentional Vulnerability & Final Test:**
+To better demonstrate the intended "unsafe coding pattern" for this scenario, we chose to modify the `RecentSearchesComponent` to make it **intentionally vulnerable**.
+
+*   **Code Change:** We injected `DomSanitizer` into `RecentSearchesComponent` and used `bypassSecurityTrustHtml()` on the terms retrieved from `localStorage`. This made it the primary sink for a Persisted DOM-based XSS.
+*   **Bug Fix:** We also corrected a bug in `SearchResultComponent` that caused duplicate search terms to be saved.
+
+**The Definitive E2E Test:**
+After extensive debugging of SPA timing issues, we arrived at the following robust test flow, which proves the full lifecycle of the persisted vulnerability:
+
+1.  **Inject:** The test first visits the search page and injects a malicious payload into `localStorage` by performing a search.
+2.  **Verify Initial Trigger:** It confirms the XSS banner appears immediately, triggered by the now-vulnerable `RecentSearchesComponent`.
+3.  **Navigate & Hard Refresh:** The test navigates to a different page (`/about`) and performs a **hard refresh** (`cy.reload(true)`). This is a critical step that clears the current DOM, destroying the first banner.
+4.  **Verify Disappearance:** It asserts that the banner is now gone, proving the banner is not a simple DOM artifact of the SPA navigation.
+5.  **Verify Persistence:** Finally, the test navigates back to the search page. The `RecentSearchesComponent` re-initializes, reads the payload from `localStorage`, and re-executes the script, causing the banner to reappear. This definitively proves the vulnerability is **persisted** in storage.
+
+This final test provides a clear, compelling, and accurate video demonstration of a realistic Persisted DOM-based XSS attack.
+
 ## 7. Enumeration of `safevalues` API Builders
 
 This section provides a definitive list of the primary builder and sanitization patterns found in the `safevalues` library, which are the target solutions for the vulnerabilities introduced in the implementation plan.
@@ -276,3 +377,16 @@ npm rebuild
         ```
 
 This plan provides a comprehensive roadmap for the implementation phase. The next step is to begin by scaffolding the new Angular SSR application.
+
+## 9. Session State & Next Steps
+
+**Status:**
+*   **Scenario 1: Recent Searches** has been fully implemented, tested, and committed.
+    *   **Feature Complete:** The `RecentSearchesComponent` is created, styled to match the application theme, and integrated into the `SearchResultComponent`.
+    *   **Functionality:** Recent searches are saved to `localStorage`, deduplicated, and displayed as clickable links.
+    *   **Intentional Vulnerability:** The component was modified to be **intentionally vulnerable** by using `DomSanitizer.bypassSecurityTrustHtml()`, providing a clear example of an unsafe coding pattern.
+    *   **Unit Tested:** A focused component test was created to prove, in isolation, that the component unsafely renders HTML from `localStorage`.
+    *   **E2E Tested:** A robust E2E test (`recentSearches.spec.ts`) was developed. The final version provides a compelling video that demonstrates the full lifecycle of a persisted DOM-based XSS attack, including surviving a hard page refresh.
+
+**Next Action:**
+Begin implementation of **Scenario 2: Rich Text Product Reviews**.

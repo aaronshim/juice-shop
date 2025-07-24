@@ -349,4 +349,42 @@ describe('SearchResultComponent', () => {
     component.addToBasket(2)
     expect(console.log).toHaveBeenCalledWith('Error')
   }))
+
+  describe('Recent Searches', () => {
+    let setSpy: jasmine.Spy
+    let getSpy: jasmine.Spy
+
+    beforeEach(() => {
+      setSpy = spyOn(localStorage, 'setItem')
+      getSpy = spyOn(localStorage, 'getItem').and.returnValue(null)
+    })
+
+    it('should store a new search term', () => {
+      activatedRoute.setQueryParameter('new search')
+      component.filterTable()
+      expect(setSpy).toHaveBeenCalledWith('recentSearches', JSON.stringify(['new search']))
+    })
+
+    it('should add a new search to the beginning of an existing list', () => {
+      const existingSearches = ['search1', 'search2']
+      getSpy.and.returnValue(JSON.stringify(existingSearches))
+      activatedRoute.setQueryParameter('new search')
+
+      component.filterTable()
+
+      const expectedSearches = ['new search', 'search1', 'search2']
+      expect(setSpy).toHaveBeenCalledWith('recentSearches', JSON.stringify(expectedSearches))
+    })
+
+    it('should limit the number of stored searches to 5', () => {
+      const existingSearches = ['1', '2', '3', '4', '5']
+      getSpy.and.returnValue(JSON.stringify(existingSearches))
+      activatedRoute.setQueryParameter('new')
+
+      component.filterTable()
+
+      const expectedSearches = ['new', '1', '2', '3', '4']
+      expect(setSpy).toHaveBeenCalledWith('recentSearches', JSON.stringify(expectedSearches))
+    })
+  })
 })

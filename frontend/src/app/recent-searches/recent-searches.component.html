@@ -1,0 +1,12 @@
+@if (recentSearches.length > 0) {
+  <div id="recent-searches-container">
+    <h5>Recent Searches:</h5>
+    <ul>
+      @for (search of recentSearches; track search.raw) {
+        <li>
+          <a [routerLink]="['/search']" [queryParams]="{ q: search.raw }" [innerHTML]="search.trusted"></a>
+        </li>
+      }
+    </ul>
+  </div>
+}

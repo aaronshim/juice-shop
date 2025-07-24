@@ -12,6 +12,7 @@ export default defineConfig({
     runMode: 2
   },
   e2e: {
+    video: true,
     baseUrl: 'http://localhost:3000',
     specPattern: 'test/cypress/e2e/**.spec.ts',
     downloadsFolder: 'test/cypress/downloads',

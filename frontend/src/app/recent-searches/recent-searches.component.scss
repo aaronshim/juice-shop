@@ -1,0 +1,40 @@
+:host {
+  display: block;
+  margin-top: 15px;
+  margin-bottom: 10px;
+}
+
+#recent-searches-container {
+  // Use theme variables for a consistent look
+  border: 1px solid var(--theme-primary-fade-20);
+  background-color: var(--theme-background-darker);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1em;
+  font-weight: bold;
+  // Use the theme's primary text color
+  color: var(--theme-text);
+}
+
+ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 0;
+}
+
+li {
+  padding: 8px 5px;
+  border-bottom: 1px solid var(--theme-primary-fade-10);
+  font-style: italic;
+  // Use a slightly faded text color
+  color: var(--theme-text-fade-50);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}

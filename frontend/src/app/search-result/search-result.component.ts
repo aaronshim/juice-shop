@@ -29,6 +29,7 @@ import { MatCardModule, MatCardImage, MatCardTitle, MatCardContent } from '@angu
 import { MatGridList, MatGridTile } from '@angular/material/grid-list'
 import { NgIf, NgFor, AsyncPipe } from '@angular/common'
 import { FlexModule } from '@angular/flex-layout/flex'
+import { RecentSearchesComponent } from '../recent-searches/recent-searches.component'
 
 library.add(faEye, faCartPlus)
 
@@ -46,7 +47,7 @@ interface TableEntry {
   selector: 'app-search-result',
   templateUrl: './search-result.component.html',
   styleUrls: ['./search-result.component.scss'],
-  imports: [FlexModule, NgIf, MatGridList, NgFor, MatGridTile, MatCardModule, TranslateModule, MatTooltip, MatCardImage, MatButtonModule, MatCardTitle, MatCardContent, MatDivider, MatPaginator, AsyncPipe]
+  imports: [FlexModule, NgIf, MatGridList, NgFor, MatGridTile, MatCardModule, TranslateModule, MatTooltip, MatCardImage, MatButtonModule, MatCardTitle, MatCardContent, MatDivider, MatPaginator, AsyncPipe, RecentSearchesComponent]
 })
 export class SearchResultComponent implements OnDestroy, AfterViewInit {
   public displayedColumns = ['Image', 'Product', 'Description', 'Price', 'Select']
@@ -152,6 +153,14 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
     let queryParam: string = this.route.snapshot.queryParams.q
     if (queryParam) {
       queryParam = queryParam.trim()
+      // Lab-specific change: Store recent searches
+      let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]')
+      // Remove previous instances of the same search term
+      recentSearches = recentSearches.filter((term: string) => term !== queryParam)
+      // Add the new search term to the beginning
+      recentSearches.unshift(queryParam)
+      localStorage.setItem('recentSearches', JSON.stringify(recentSearches.slice(0, 5)))
+      // End of lab-specific change
       this.ngZone.runOutsideAngular(() => { // vuln-code-snippet hide-start
         this.io.socket().emit('verifyLocalXssChallenge', queryParam)
       }) // vuln-code-snippet hide-end
