@@ -1,0 +1,11 @@
+<h3>Leave a Rich Text Review</h3>
+
+<div class="editor">
+  <!-- This is our simulated 3rd-party web component -->
+  <insecure-editor #editor></insecure-editor>
+  <button mat-raised-button color="primary" (click)="submitReview()">Submit Review</button>
+</div>
+
+<!-- The vulnerable display area -->
+<h4>Your Submitted Review:</h4>
+<div class="review-display" [innerHTML]="reviewHtml"></div>

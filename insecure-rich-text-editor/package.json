@@ -1,0 +1,8 @@
+{
+  "name": "insecure-rich-text-editor",
+  "version": "1.0.0",
+  "description": "A simulated insecure rich text editor.",
+  "main": "index.js",
+  "author": "",
+  "license": "MIT"
+}

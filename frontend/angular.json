@@ -55,7 +55,9 @@
               "js-sha3",
               "qrcode"
             ],
-            "scripts": [],
+            "scripts": [
+              "node_modules/insecure-rich-text-editor/index.js"
+            ],
             "aot": false,
             "vendorChunk": true,
             "extractLicenses": false,

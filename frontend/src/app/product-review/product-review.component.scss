@@ -1,0 +1,27 @@
+.editor {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid var(--theme-primary-fade-20);
+  border-radius: 4px;
+  background-color: var(--theme-background-darker);
+}
+
+button {
+  margin-top: 10px;
+  width: 100%;
+}
+
+h4 {
+  margin-top: 20px;
+  font-weight: 500;
+  color: var(--theme-text);
+}
+
+.review-display {
+  margin-top: 10px;
+  padding: 15px;
+  border-left: 4px solid var(--theme-accent);
+  background-color: var(--theme-background-dark);
+  min-height: 50px;
+  color: var(--theme-text);
+}
