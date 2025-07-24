@@ -71,3 +71,7 @@ config/*.yml
 cypress/videos/
 cypress/screenshots/
 cypress/downloads/
+
+# Local Artifacts
+*.mp4
+safevalues/
