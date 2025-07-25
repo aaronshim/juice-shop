@@ -8,4 +8,6 @@
 
 <!-- The vulnerable display area -->
 <h4>Your Submitted Review:</h4>
-<div class="review-display" [innerHTML]="reviewHtml"></div>
+@if (reviewHtml) {
+  <div class="review-display" [innerHTML]="reviewHtml"></div>
+}

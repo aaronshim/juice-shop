@@ -28,6 +28,12 @@ import { MatSnackBarModule } from '@angular/material/snack-bar'
 import { type Product } from '../Models/product.model'
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http'
 
+declare global {
+  interface Window {
+    trackView: any
+  }
+}
+
 describe('ProductDetailsComponent', () => {
   let component: ProductDetailsComponent
   let fixture: ComponentFixture<ProductDetailsComponent>
@@ -78,6 +84,8 @@ describe('ProductDetailsComponent', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(ProductDetailsComponent)
     component = fixture.componentInstance
+    // Mock the global trackView function
+    window.trackView = () => {}
     fixture.autoDetectChanges()
   })
 
@@ -172,5 +180,32 @@ describe('ProductDetailsComponent', () => {
     const buttonDe = fixture.debugElement.query(By.css('div.review-text'))
     buttonDe.triggerEventHandler('click', null)
     expect(productReviewService.get).toHaveBeenCalledWith(42)
+  })
+
+  it('should create an unsafe script tag from the product name on init', () => {
+    // 1. Spy on document.body.appendChild to see what it's called with
+    const appendChildSpy = spyOn(document.body, 'appendChild').and.callThrough()
+
+    // 2. Define the malicious product data
+    const maliciousName = `');alert("XSS");//`
+    component.data = {
+      productData: {
+        name: maliciousName,
+        price: 1,
+        description: '',
+        image: '',
+        id: 1,
+        points: 0
+      }
+    }
+
+    // 3. Trigger the component's initialization, which calls the vulnerable method
+    component.ngOnInit()
+
+    // 4. Assert that the created script contains the raw, unsafely concatenated string
+    const scriptElement = appendChildSpy.calls.mostRecent().args[0] as HTMLScriptElement
+    const expectedScriptContent = `var trackView = () => {}; trackView('${maliciousName}');`
+    expect(scriptElement.tagName).toBe('SCRIPT')
+    expect(scriptElement.textContent).toBe(expectedScriptContent)
   })
 })

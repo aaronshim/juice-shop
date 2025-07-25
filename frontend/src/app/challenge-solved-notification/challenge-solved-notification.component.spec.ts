@@ -117,15 +117,18 @@ describe('ChallengeSolvedNotificationComponent', () => {
     expect(component.notifications).toEqual([{ key: 'test', message: 'CHALLENGE_SOLVED', flag: '1234', copied: false, country: undefined }])
   }))
 
-  it('should store retrieved continue code as cookie for 1 year', () => {
+  it('should store retrieved continue code as cookie for 1 year', fakeAsync(() => {
     challengeService.continueCode.and.returnValue(of('12345'))
+    jasmine.clock().install()
+    jasmine.clock().mockDate(new Date())
 
     const expires = new Date()
-    component.saveProgress()
     expires.setFullYear(expires.getFullYear() + 1)
+    component.saveProgress()
 
     expect(cookieService.put).toHaveBeenCalledWith('continueCode', '12345', { expires })
-  })
+    jasmine.clock().uninstall()
+  }))
 
   it('should throw error when not supplied with a valid continue code', () => {
     challengeService.continueCode.and.returnValue(of(undefined))

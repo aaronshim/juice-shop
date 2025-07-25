@@ -12,7 +12,18 @@
       </div>
 
       <div>
-        <h1>{{data.productData.name}}</h1>
+        <div class="item-name-container">
+          <h1 *ngIf="!editing" id="product-name">{{data.productData.name}}</h1>
+          <mat-form-field *ngIf="editing" class="edit-input">
+            <input matInput [(ngModel)]="data.productData.name" aria-label="Product name edit input">
+          </mat-form-field>
+          <button *ngIf="!editing" mat-icon-button (click)="startEditing()" matTooltip="Suggest an edit for this product" aria-label="Suggest an edit for this product">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button *ngIf="editing" mat-icon-button (click)="saveName()" matTooltip="Save your suggestion" aria-label="Save your suggestion">
+            <mat-icon>save</mat-icon>
+          </button>
+        </div>
         <div [innerHTML]="data.productData.description"></div>
         <br/>
         <div>

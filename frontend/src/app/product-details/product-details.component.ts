@@ -9,7 +9,7 @@ import { ProductReviewService } from '../Services/product-review.service'
 import { Component, Inject, type OnDestroy, type OnInit } from '@angular/core'
 import { MAT_DIALOG_DATA, MatDialog, MatDialogContent, MatDialogActions, MatDialogClose } from '@angular/material/dialog'
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faArrowCircleLeft, faCrown, faPaperPlane, faThumbsUp, faUserEdit } from '@fortawesome/free-solid-svg-icons'
+import { faArrowCircleLeft, faCrown, faPaperPlane, faThumbsUp, faUserEdit, faEdit, faSave } from '@fortawesome/free-solid-svg-icons'
 import { UntypedFormControl, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms'
 import { MatSnackBar } from '@angular/material/snack-bar'
 import { SnackBarHelperService } from '../Services/snack-bar-helper.service'
@@ -26,8 +26,9 @@ import { MatTooltip } from '@angular/material/tooltip'
 import { NgIf, NgFor, AsyncPipe } from '@angular/common'
 import { FlexModule } from '@angular/flex-layout/flex'
 import { ProductReviewComponent } from '../product-review/product-review.component'
+import { ProductService } from '../Services/product.service'
 
-library.add(faPaperPlane, faArrowCircleLeft, faUserEdit, faThumbsUp, faCrown)
+library.add(faPaperPlane, faArrowCircleLeft, faUserEdit, faThumbsUp, faCrown, faEdit, faSave)
 
 @Component({
   selector: 'app-product-details',
@@ -40,9 +41,12 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
   public reviews$: any
   public userSubscription: any
   public reviewControl: UntypedFormControl = new UntypedFormControl('', [Validators.maxLength(160)])
+  public editing: boolean = false
+
   constructor (private readonly dialog: MatDialog,
     @Inject(MAT_DIALOG_DATA) public data: { productData: Product }, private readonly productReviewService: ProductReviewService,
-    private readonly userService: UserService, private readonly snackBar: MatSnackBar, private readonly snackBarHelperService: SnackBarHelperService) { }
+    private readonly userService: UserService, private readonly snackBar: MatSnackBar, private readonly snackBarHelperService: SnackBarHelperService,
+    private readonly productService: ProductService) { }
 
   ngOnInit (): void {
     this.data.productData.points = Math.round(this.data.productData.price / 10)
@@ -54,12 +58,38 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
         this.author = 'Anonymous'
       }
     }, (err) => { console.log(err) })
+    this.trackProductView()
   }
 
   ngOnDestroy () {
     if (this.userSubscription) {
       this.userSubscription.unsubscribe()
     }
+  }
+
+  trackProductView () {
+    // VULNERABILITY: Unsafe string concatenation into a script
+    const script = document.createElement('script')
+    // Using a global function name that is more likely to be used in a real-world analytics scenario
+    script.textContent = `var trackView = () => {}; trackView('${this.data.productData.name}');`
+    document.body.appendChild(script)
+  }
+
+  startEditing () {
+    if (this.isLoggedIn()) {
+      this.editing = true
+    } else {
+      this.snackBarHelperService.open('PLEASE_LOG_IN', 'errorBar')
+    }
+  }
+
+  saveName () {
+    this.productService.put(this.data.productData.id, { name: this.data.productData.name }).subscribe(() => {
+      this.editing = false
+    }, (err) => {
+      console.log(err)
+      this.snackBarHelperService.open('ERROR_WHILE_UPDATING_PRODUCT', 'errorBar')
+    })
   }
 
   addReview (textPut: HTMLTextAreaElement) {
