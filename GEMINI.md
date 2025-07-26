@@ -446,44 +446,34 @@ A full validation run of Scenario #3 revealed and resolved several inconsistenci
 3.  **Final Validation:** After these refinements, the full frontend and backend unit test suites, as well as the targeted `productViewAnalytics.spec.ts` E2E test, all pass successfully. This confirms that Scenario #3 is now robust, believable, and fully validated.
 
 **Next Action:**
-Begin implementation of **Scenario 4: Custom Profile Theme (SSR Resource Injection)**.
+Begin implementation of **Scenario 5: Profile Status Message (State Transfer XSS)**.
 
 ### Scenario 4: Custom Profile Theme (SSR Resource Injection)
 
-**Status:** ⏳ **Not Started**
+**Status:** ✅ **Done**
 
 **Implementation & Analysis:**
-This scenario will introduce a "Custom Profile Theme" feature, allowing users to personalize their profile page by providing a URL to an external CSS stylesheet. This feature will be built as a new, standalone Angular SSR application and integrated via a reverse proxy.
+This scenario successfully demonstrates a Server-Side Resource Injection vulnerability. A new, standalone Angular SSR application was created to host a "Custom Profile Theme" page. This page is styled to match the main Juice Shop application's dark theme, using Angular Material components.
 
-The core of this scenario is to demonstrate a subtle but severe vulnerability that arises specifically from rendering seemingly safe code on the server. The developer's intent is to dynamically add the user's chosen stylesheet to the page. They do this by creating a `<link>` element and appending it to the document's `<head>`.
+The vulnerability is implemented in the `profile-theme` component. It injects the `DOCUMENT` token and, in `ngOnInit`, uses native DOM methods (`document.createElement('link')`, `document.head.appendChild()`) to inject a `<link>` tag directly into the document's `<head>`. The `href` for this link is taken directly from a `themeUrl` query parameter.
 
-**The Vulnerability: Server-Side Resource Injection**
-This coding pattern is deceptive because its security implications change drastically between the client and the server.
+A key discovery during implementation was the necessity of setting `renderMode: RenderMode.Server` for the component's route in `app.routes.server.ts`. Without this, the production SSR build would optimize away the component's imperative `ngOnInit` logic. Forcing the server render mode ensures the DOM manipulation is executed and serialized into the initial HTML response.
 
-*   **On the Client (Less Dangerous):** In a standard client-side rendered app, this operation happens in the user's browser. A modern browser, especially one with a `Trusted Types` Content Security Policy (CSP), would likely intervene and block the attempt to dynamically load a resource from an untrusted URL. The security context is active and policed by the browser.
-
-*   **On the Server (Highly Dangerous):** When this code executes in the Node.js environment during Server-Side Rendering, the context is completely different:
-    1.  **No Security Sandbox:** The `domino` library, used by Angular to simulate the DOM on the server, does not implement browser security features like CSP or Trusted Types. It is a DOM *emulator*, not a security sandbox.
-    2.  **Server-Side DOM Mutation:** The code `renderer.appendChild(this.document.head, link)` modifies the *in-memory* DOM object on the server.
-    3.  **HTML Serialization:** The SSR engine serializes this modified in-memory DOM into a final HTML string. The malicious `<link href="https://attacker.com/exploit.css">` tag is now baked directly into the static HTML blueprint of the page.
-    4.  **Blueprint vs. Renovation:** The malicious link is not a dynamic "renovation" on the client; it is part of the original "blueprint" sent from the server. The browser receives it as trusted, static content and immediately fetches the malicious resource, bypassing client-side dynamic security controls.
-
-**The Guaranteed Safe Fix: `safevalues` + `DomSanitizer`**
-The guaranteed-safe pattern involves using both libraries to enforce security.
-
-1.  **Policy Decision (`safevalues`):** The component will use a `safevalues` builder (`safeResourceUrl`) to validate the user-provided URL against a strict allowlist (e.g., only permit URLs from a trusted domain ending in `.css`). This function acts as the **Policy Decision Point**.
-2.  **Policy Enforcement (`DomSanitizer`):** If the `safevalues` check passes, the resulting `TrustedResourceUrl` is passed to Angular's `DomSanitizer.bypassSecurityTrustResourceUrl()`. This is the official, framework-idiomatic gateway for telling Angular's renderer to trust a value. This is the **Policy Enforcement Point**.
-3.  **Declarative Binding:** The component template will then use a simple, declarative attribute binding (`<link [href]="safeThemeUrl">`). Because the `safeThemeUrl` property is of the type `SafeResourceUrl` (returned by the sanitizer), Angular's security-aware rendering engine handles the final assignment to the DOM, providing a compile-time and runtime guarantee of safety.
+The E2E test (`ssr.spec.ts`) was specifically crafted to verify this vulnerability. It uses `cy.request()` to inspect the raw HTML from the server, confirming the presence of the injected `<link>` tag before client-side hydration can occur and potentially remove the element. The test also includes a visual confirmation step, using a local malicious CSS file to display a large crimson banner, which is captured in the test video.
 
 
 ### Scenario 5: Profile Status Message (State Transfer XSS)
 
-**Status:** ⏳ **Not Started**
+**Status:** ✅ **Done**
 
 **Implementation & Analysis:**
-This scenario will demonstrate a classic SSR vulnerability known as **State Transfer XSS**. The feature will be a "Profile Status Message," where data fetched on the server is "transferred" to the client to avoid a redundant API call.
+This scenario demonstrates a classic SSR vulnerability known as **State Transfer XSS**. The feature is a "Profile Status Message" page within the standalone `angular-ssr` application. It's styled with Angular Material to match the main application's theme.
 
-The vulnerability occurs when the server puts raw, un-sanitized user data directly into Angular's `TransferState` mechanism.
+The vulnerability is triggered when the server takes a raw, un-sanitized string from a URL query parameter (`status`) and injects it directly into Angular's `TransferState`. When the server serializes the application state to be sent to the client, this raw string is embedded within a `<script type="application/json">` tag in the initial HTML.
+
+A malicious payload can break out of this script block and execute arbitrary JavaScript. For example, a `status` of `</script><script>alert('XSS')</script>` will prematurely close the legitimate JSON script and run the attacker's script.
+
+The implementation uses modern Angular signals (`writableSignal`) for state management. The E2E test (`ssr-state-transfer.spec.ts`) was crafted to verify the vulnerability by visiting the page with a malicious payload that injects a large, crimson, styled `div` banner. The test then asserts that this banner is visible, providing clear video evidence of the successful XSS attack.
 
 **The Vulnerability: State Transfer XSS**
 1.  **The Goal:** To avoid a "double fetch," the server fetches the user's status message and puts it into the `TransferState` map.
