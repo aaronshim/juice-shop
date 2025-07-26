@@ -1,0 +1,19 @@
+<div class="live-preview-container">
+  <h3>Live Product Customization</h3>
+  <p>Enter text below to customize your product. The preview will update as you type.</p>
+
+  <textarea
+    #previewInput
+    (input)="updatePreview(previewInput.value)"
+    placeholder="Enter your custom text here..."
+    rows="4"
+    class="mat-input-element"
+  ></textarea>
+
+  <h4>Live Preview:</h4>
+  <div class="preview-pane" [innerHTML]="previewContent"></div>
+
+  <p class="info">
+    Note: This feature demonstrates a self-contained, DOM-based XSS vulnerability.
+  </p>
+</div>

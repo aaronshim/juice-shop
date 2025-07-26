@@ -26,6 +26,7 @@ import { MatTooltip } from '@angular/material/tooltip'
 import { NgIf, NgFor, AsyncPipe } from '@angular/common'
 import { FlexModule } from '@angular/flex-layout/flex'
 import { ProductReviewComponent } from '../product-review/product-review.component'
+import { LiveProductPreviewComponent } from '../live-product-preview/live-product-preview.component'
 import { ProductService } from '../Services/product.service'
 
 library.add(faPaperPlane, faArrowCircleLeft, faUserEdit, faThumbsUp, faCrown, faEdit, faSave)

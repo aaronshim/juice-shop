@@ -1,0 +1,30 @@
+.live-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  padding: 1em;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 1em;
+}
+
+textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.preview-pane {
+  border: 2px dashed #673ab7;
+  padding: 1em;
+  min-height: 100px;
+  background-color: #f5f5f5;
+  word-wrap: break-word;
+}
+
+.info {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 1em;
+}

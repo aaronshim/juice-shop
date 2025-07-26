@@ -484,6 +484,27 @@ The implementation uses modern Angular signals (`writableSignal`) for state mana
 **The Fix: Server-Side Sanitization**
 The fix is to ensure that any data placed into `TransferState` is properly sanitized on the server *before* serialization. The server-side code must treat all user-provided data as untrusted. By using a `safevalues` sanitizer (like the HTML Sanitizer) on the status message string before calling `transferState.set()`, the malicious `<script>` tags would be stripped or escaped, neutralizing the attack. The data arrives on the client as a safe, inert string.
 
+### Scenario 6: Live Product Preview
+
+**Status:** ✅ **Done**
+
+**Implementation & Analysis:**
+This scenario demonstrates a self-contained, DOM-based XSS vulnerability. A new "Live Product Preview" feature was created, allowing a user to type into a `textarea` and see the text rendered in a preview pane in real-time.
+
+The vulnerability is in the component's `updatePreview` method, which is triggered on every `input` event. The method takes the raw text from the `textarea` and, to preserve any user-intended HTML, uses `DomSanitizer.bypassSecurityTrustHtml()` before binding the result to the `[innerHTML]` of the preview pane. This creates an immediate DOM-XSS vector.
+
+After significant debugging of E2E test failures, the issue was traced to the component's integration into the application. The initial approach of treating the new component as standalone within a non-standalone parent (`ProductDetailsComponent`) was incorrect. The solution was to revert the component to be a standard, non-standalone component and declare it properly in the main `AppModule`.
+
+To make the E2E test more reliable and independent of the product details dialog, a dedicated route (`/live-preview`) was created to host the component directly. The final, passing E2E test visits this route and verifies that a malicious payload typed into the `textarea` successfully creates a visible, styled banner in the preview pane.
+
+**The Vulnerability: Immediate DOM XSS**
+1.  **The Goal:** To provide a rich text preview, the developer wants to render user-supplied HTML.
+2.  **The Mistake:** The developer takes the raw string from the `textarea` and explicitly trusts it using `DomSanitizer.bypassSecurityTrustHtml()`.
+3.  **The Injection:** The trusted, malicious HTML is bound to the `[innerHTML]` of the preview `div`, causing the browser to render it and execute any embedded scripts.
+
+**The Fix: HTML Sanitizer**
+The fix is to process the untrusted input with the `safevalues` HTML Sanitizer before rendering. The sanitizer would parse the HTML, remove dangerous elements and attributes (like `<script>` or `onerror`), and return a `SafeHtml` object that is safe to render, neutralizing the XSS attack.
+
 ## 10. Debugging the SSR Application
 
 This section documents the commands and procedures for debugging the standalone `angular-ssr` application.

@@ -42,6 +42,7 @@ import { DeluxeUserComponent } from './deluxe-user/deluxe-user.component'
 import { AccountingGuard, AdminGuard, LoginGuard } from './app.guard'
 import { NFTUnlockComponent } from './nft-unlock/nft-unlock.component'
 import { ScoreBoardComponent } from './score-board/score-board.component'
+import { LiveProductPreviewComponent } from './live-product-preview/live-product-preview.component'
 
 const loadFaucetModule = async () => {
   const module = await import('./faucet/faucet.module')
@@ -63,6 +64,10 @@ const routes: Routes = [
     component: AdministrationComponent, // vuln-code-snippet neutral-line adminSectionChallenge
     canActivate: [AdminGuard] // vuln-code-snippet neutral-line adminSectionChallenge
   }, // vuln-code-snippet neutral-line adminSectionChallenge
+  {
+    path: 'live-preview',
+    component: LiveProductPreviewComponent
+  },
   {
     path: 'accounting',
     component: AccountingComponent,
