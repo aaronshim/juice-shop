@@ -1,3 +1,11 @@
+# Angular Best Practices
+
+**For all Angular code that you write, you must follow the guidelines at https://angular.dev/context/llm-files/llms-full.txt**
+
+**Key Convention Rules for this Project:**
+*   **New Components:** When creating **new** Angular components, you **must** use the modern, built-in control flow syntax (`@if`, `@for`, `@switch`).
+*   **Existing Components:** When modifying **existing** Angular components, you **must** adhere to the established conventions of that file. If the component uses `*ngIf` and `*ngFor`, you must continue to use them to maintain code consistency.
+
 # Gemini CLI: Juice Shop Application Context
 
 This document summarizes the key user flows, architectural patterns, and security analysis of the OWASP Juice Shop application. It also contains a detailed plan for introducing new features to demonstrate common XSS vulnerabilities and their mitigation using the `safevalues` library.
@@ -134,8 +142,13 @@ This section outlines a strategic plan to introduce six new, plausible features,
 
 ### a. Overall Strategy
 1.  **Introduce Client-Side Vulnerabilities:** Five vulnerabilities will be added to the existing client-side rendered Angular application.
-2.  **Introduce a Server-Side Vulnerability:** One vulnerability will be created in a **new, standalone Angular SSR application**. This will demonstrate a subtle but critical SSR-specific exploit (`TransferState` XSS) in an isolated environment.
-3.  **Integrate via Reverse Proxy:** The main Juice Shop Express server will be configured to act as a reverse proxy, forwarding requests to a specific route (e.g., `/profile-ssr`) to the new, standalone SSR micro-app.
+2.  **Introduce Server-Side Vulnerabilities:** Two distinct vulnerabilities will be created in a **new, standalone Angular SSR application**. This will demonstrate subtle but critical SSR-specific exploits in an isolated environment.
+3.  **Integrate via Reverse Proxy:** The main Juice Shop Express server will be configured to act as a reverse proxy, forwarding requests to a specific route (e.g., `/ssr`) to the new, standalone SSR micro-app.
+
+#### Architectural Note: Why Use a Reverse Proxy?
+The new Angular SSR application is a self-contained server process that must be executed independently of the main Juice Shop server. The main server cannot simply render the SSR app's files as it does with its simple Pug templates; it must delegate the entire request to the running SSR application.
+
+A reverse proxy is the standard architectural pattern for this delegation. While it is technically possible to write a manual proxy using Node.js's `http` module, this is complex and error-prone. The idiomatic "Express way" is to use a dedicated, battle-tested middleware library. For this reason, we will add `http-proxy-middleware` as a single, focused dependency to handle this integration cleanly and robustly.
 
 ### b. Detailed Feature & Vulnerability Plan
 
@@ -144,8 +157,8 @@ This section outlines a strategic plan to introduce six new, plausible features,
 | **1. Recent Searches** | **Developer Mistake** | Rendering raw search terms from `localStorage` with `innerHTML`, causing **persisted DOM XSS**. | **`htmlEscape`** |
 | **2. Rich Text Product Reviews** | **Supply-Chain Vulnerability** (Insecure 3rd-party WYSIWYG editor) | Trusting the raw HTML output of a third-party library (`editor.getRawHtml()`) and rendering it with `innerHTML`, allowing malicious tags. | **HTML Sanitizer Process** |
 | **3. Product View Analytics** | **Developer Mistake** | Building a script via unsafe string concatenation (`'track("' + product.name + '")'`), allowing quotes to break out and cause XSS. | **`safeScriptWithArgs`** |
-| **4. Profile Status Message** | **SSR Framework Pitfall** | **State Transfer XSS:** Placing un-sanitized user data into `TransferState`, which is then serialized into the initial HTML, breaking out of the state-transfer script block. | **Server-Side Sanitization before State Transfer** |
-| **5. Custom Profile Theme** | **Developer Mistake** | Injecting a user-provided string directly into an inline `style` attribute, allowing for **CSS Injection** and data exfiltration. | **CSS Sanitization** (via `HtmlSanitizer`) & Input Validation |
+| **4. Custom Profile Theme** | **SSR Framework Pitfall** | **Server-Side Resource Injection:** A user-provided URL is used to create a `<link>` tag in the document `<head>` on the server. Forcing the route to use `RenderMode.Server` ensures the component logic runs, injecting the tag into the initial HTML and bypassing client-side controls. | **`TrustedResourceUrl`** |
+| **5. Profile Status Message** | **SSR Framework Pitfall** | **State Transfer XSS:** Placing un-sanitized user data into `TransferState`, which is then serialized into the initial HTML, breaking out of the state-transfer script block. | **Server-Side Sanitization before State Transfer** |
 | **6. Live Product Preview** | **Developer Mistake** | On every input event, rendering raw text from a `textarea` directly into a `div` using `innerHTML`, causing **immediate, self-contained DOM XSS**. | **HTML Sanitizer Process** |
 
 ### c. Real-World Parallels
@@ -259,6 +272,24 @@ After extensive debugging of SPA timing issues, we arrived at the following robu
 5.  **Verify Persistence:** Finally, the test navigates back to the search page. The `RecentSearchesComponent` re-initializes, reads the payload from `localStorage`, and re-executes the script, causing the banner to reappear. This definitively proves the vulnerability is **persisted** in storage.
 
 This final test provides a clear, compelling, and accurate video demonstration of a realistic Persisted DOM-based XSS attack.
+
+### Scenario 2: Rich Text Product Reviews
+
+**Status:** ✅ **Done**
+
+**Implementation & Analysis:**
+To realistically simulate a supply chain vulnerability, we went beyond the initial plan and created a more convincing "third-party" component.
+
+1.  **Fake NPM Package:** We created a new top-level directory, `insecure-rich-text-editor`, containing a `package.json` and `index.js`. This allowed us to install it as a local dependency into the `frontend` application using `npm install file:../insecure-rich-text-editor --legacy-peer-deps`.
+2.  **Web Component Simulation:** To make the "third-party" library a true black box, we implemented it as a custom web component (`<insecure-editor>`). This involved:
+    *   Defining a class that extends `HTMLElement`.
+    *   Using a Shadow DOM to encapsulate its internal structure (a toolbar and a `textarea`).
+    *   Registering it with `window.customElements.define()`.
+3.  **Angular Integration:** To consume the web component in our `ProductReviewComponent`, we had to:
+    *   Add the component's script to the `scripts` array in `angular.json`.
+    *   Add `CUSTOM_ELEMENTS_SCHEMA` to the `ProductReviewComponent`'s schemas to allow the unknown `<insecure-editor>` tag.
+4.  **Vulnerability Implementation:** Our debugging revealed that Angular's `[innerHTML]` binding **correctly sanitizes** input by default. To complete the simulation of an insecure integration, we had to explicitly inject `DomSanitizer` into the `ProductReviewComponent` and use `bypassSecurityTrustHtml()` on the data received from the web component. This is the precise unsafe pattern being demonstrated.
+5.  **Styling & Testing:** The component and the web component were both styled to match the application's theme, and a full suite of passing unit and E2E tests were created to verify the final, realistic implementation.
 
 ## 7. Enumeration of `safevalues` API Builders
 
@@ -389,4 +420,124 @@ This plan provides a comprehensive roadmap for the implementation phase. The nex
     *   **E2E Tested:** A robust E2E test (`recentSearches.spec.ts`) was developed. The final version provides a compelling video that demonstrates the full lifecycle of a persisted DOM-based XSS attack, including surviving a hard page refresh.
 
 **Next Action:**
-Begin implementation of **Scenario 2: Rich Text Product Reviews**.
+Begin implementation of **Scenario 3: Product View Analytics**.
+
+### Scenario 3: Community-Sourced Product Information (Stored XSS via Script Injection)
+
+**Status:** ✅ **Done**
+
+**Implementation & Analysis:**
+This scenario was implemented to demonstrate a stored XSS vulnerability that does not rely on an `innerHTML` sink, but rather on unsafe script creation.
+
+1.  **Feature:** A "Suggest an Edit" feature was added to the `ProductDetailsComponent`, allowing any logged-in user to edit a product's name.
+2.  **Vulnerability:** The `saveName()` method in the component was intentionally written to be vulnerable. Upon saving, it dynamically creates a `<script>` tag and concatenates the user-provided product name directly into the script's content. This creates a classic script injection vulnerability.
+3.  **E2E Test & Video:** A robust E2E test (`productViewAnalytics.spec.ts`) was created. It logs in, edits a product name with a JavaScript payload (`');...banner code...//`), and verifies that the XSS banner appears. This provides a clear video of a user-driven, non-innerHTML stored XSS attack.
+4.  **Angular Best Practices:** During this process, we established and documented a key convention: new components must use modern Angular syntax (e.g., `@if`), while existing components must maintain their current syntax (e.g., `*ngIf`). The new `ProductReviewComponent` was refactored to follow this rule.
+
+**Refinement and Validation of Scenario #3:**
+A full validation run of Scenario #3 revealed and resolved several inconsistencies between the implementation plan, the component code, and the test suite.
+
+1.  **Narrative Refinement:** We identified that the original "Product View Analytics" concept was a more realistic and compelling real-world scenario for this type of XSS vulnerability than the implemented "Community-Sourced Edits" feature. To align with this more believable narrative, the component was refactored: the vulnerable script-creation logic was moved from the `saveName()` method into a new `trackProductView()` method, which is now correctly triggered on component initialization (`ngOnInit`).
+
+2.  **Unit Test Debugging:** The validation process uncovered and fixed two distinct types of brittle unit tests:
+    *   **String Escaping:** The `product-details.component.spec.ts` test was failing due to a subtle string-escaping mismatch between the test's expectation and the component's actual output. After an initial incorrect fix, the issue was resolved robustly by programmatically constructing the expected string in the test using the same template literal syntax as the component, making the test resilient to future escaping behavior changes.
+    *   **Date Comparison:** An unrelated test in `challenge-solved-notification.component.spec.ts` was failing due to timing-sensitive `new Date()` comparisons. This was resolved by using `jasmine.clock().mockDate()` to ensure a deterministic and predictable time during the test run.
+
+3.  **Final Validation:** After these refinements, the full frontend and backend unit test suites, as well as the targeted `productViewAnalytics.spec.ts` E2E test, all pass successfully. This confirms that Scenario #3 is now robust, believable, and fully validated.
+
+**Next Action:**
+Begin implementation of **Scenario 4: Custom Profile Theme (SSR Resource Injection)**.
+
+### Scenario 4: Custom Profile Theme (SSR Resource Injection)
+
+**Status:** ⏳ **Not Started**
+
+**Implementation & Analysis:**
+This scenario will introduce a "Custom Profile Theme" feature, allowing users to personalize their profile page by providing a URL to an external CSS stylesheet. This feature will be built as a new, standalone Angular SSR application and integrated via a reverse proxy.
+
+The core of this scenario is to demonstrate a subtle but severe vulnerability that arises specifically from rendering seemingly safe code on the server. The developer's intent is to dynamically add the user's chosen stylesheet to the page. They do this by creating a `<link>` element and appending it to the document's `<head>`.
+
+**The Vulnerability: Server-Side Resource Injection**
+This coding pattern is deceptive because its security implications change drastically between the client and the server.
+
+*   **On the Client (Less Dangerous):** In a standard client-side rendered app, this operation happens in the user's browser. A modern browser, especially one with a `Trusted Types` Content Security Policy (CSP), would likely intervene and block the attempt to dynamically load a resource from an untrusted URL. The security context is active and policed by the browser.
+
+*   **On the Server (Highly Dangerous):** When this code executes in the Node.js environment during Server-Side Rendering, the context is completely different:
+    1.  **No Security Sandbox:** The `domino` library, used by Angular to simulate the DOM on the server, does not implement browser security features like CSP or Trusted Types. It is a DOM *emulator*, not a security sandbox.
+    2.  **Server-Side DOM Mutation:** The code `renderer.appendChild(this.document.head, link)` modifies the *in-memory* DOM object on the server.
+    3.  **HTML Serialization:** The SSR engine serializes this modified in-memory DOM into a final HTML string. The malicious `<link href="https://attacker.com/exploit.css">` tag is now baked directly into the static HTML blueprint of the page.
+    4.  **Blueprint vs. Renovation:** The malicious link is not a dynamic "renovation" on the client; it is part of the original "blueprint" sent from the server. The browser receives it as trusted, static content and immediately fetches the malicious resource, bypassing client-side dynamic security controls.
+
+**The Guaranteed Safe Fix: `safevalues` + `DomSanitizer`**
+The guaranteed-safe pattern involves using both libraries to enforce security.
+
+1.  **Policy Decision (`safevalues`):** The component will use a `safevalues` builder (`safeResourceUrl`) to validate the user-provided URL against a strict allowlist (e.g., only permit URLs from a trusted domain ending in `.css`). This function acts as the **Policy Decision Point**.
+2.  **Policy Enforcement (`DomSanitizer`):** If the `safevalues` check passes, the resulting `TrustedResourceUrl` is passed to Angular's `DomSanitizer.bypassSecurityTrustResourceUrl()`. This is the official, framework-idiomatic gateway for telling Angular's renderer to trust a value. This is the **Policy Enforcement Point**.
+3.  **Declarative Binding:** The component template will then use a simple, declarative attribute binding (`<link [href]="safeThemeUrl">`). Because the `safeThemeUrl` property is of the type `SafeResourceUrl` (returned by the sanitizer), Angular's security-aware rendering engine handles the final assignment to the DOM, providing a compile-time and runtime guarantee of safety.
+
+
+### Scenario 5: Profile Status Message (State Transfer XSS)
+
+**Status:** ⏳ **Not Started**
+
+**Implementation & Analysis:**
+This scenario will demonstrate a classic SSR vulnerability known as **State Transfer XSS**. The feature will be a "Profile Status Message," where data fetched on the server is "transferred" to the client to avoid a redundant API call.
+
+The vulnerability occurs when the server puts raw, un-sanitized user data directly into Angular's `TransferState` mechanism.
+
+**The Vulnerability: State Transfer XSS**
+1.  **The Goal:** To avoid a "double fetch," the server fetches the user's status message and puts it into the `TransferState` map.
+2.  **Serialization:** Angular's SSR engine then serializes this map and embeds it into the initial HTML inside a `<script type="application/json">` tag.
+3.  **The Mistake:** A malicious user sets their status to a string containing a script tag, like `My Status</script><script>alert('XSS')</script>`.
+4.  **The Injection:** The server blindly embeds this string into the JSON block in the HTML. The browser, while parsing the page, encounters the attacker's `</script>` tag first. It terminates the JSON script block prematurely and immediately executes the attacker's subsequent `<script>` tag.
+
+**The Fix: Server-Side Sanitization**
+The fix is to ensure that any data placed into `TransferState` is properly sanitized on the server *before* serialization. The server-side code must treat all user-provided data as untrusted. By using a `safevalues` sanitizer (like the HTML Sanitizer) on the status message string before calling `transferState.set()`, the malicious `<script>` tags would be stripped or escaped, neutralizing the attack. The data arrives on the client as a safe, inert string.
+
+## 10. Debugging the SSR Application
+
+This section documents the commands and procedures for debugging the standalone `angular-ssr` application.
+
+### a. Running the Servers
+
+1.  **Start the Main Juice Shop Server:** From the project root, run `npm run serve:dev`. This starts the main server on `http://localhost:3000` and the frontend dev server on `http://localhost:4202`.
+2.  **Start the Angular SSR Server:** In a separate terminal, navigate to the `angular-ssr` directory and run `npm run serve:ssr:angular-ssr`. This will build the app and start the SSR server on `http://localhost:4000`.
+
+### b. Testing the Vulnerability
+
+*   **Directly with `curl` (Recommended First Step):** To see the raw HTML generated by the server, use `curl`. This is the fastest way to confirm if a server-side injection is working.
+    ```bash
+    curl "http://localhost:4000/profile?status=<b>Injected!</b>"
+    ```
+*   **Through the Proxy (E2E Test):** To test the full integration, use the proxied URL.
+    ```bash
+    curl "http://localhost:3000/ssr/profile?status=<b>Injected!</b>"
+    ```
+
+### c. Breakpoint Debugging
+
+To step through the server-side code as it generates the HTML:
+
+1.  **Add a Debug Script:** Add a `serve:ssr:debug` script to `angular-ssr/package.json`:
+    ```json
+    "serve:ssr:debug": "npm run build && node --inspect-brk dist/angular-ssr/server/server.mjs"
+    ```
+2.  **Run in Debug Mode:** Start the server with `npm run serve:ssr:debug`. It will pause and wait for a debugger.
+3.  **Attach Debugger:** Use `chrome://inspect` in a Chrome browser to open the Node.js DevTools and attach to the process. You can then set breakpoints in the `server.ts` file and step through the code.
+
+### Scenario 4 Implementation Log
+
+**Status:** ✅ **Done**
+
+This section details the iterative process of implementing the SSR vulnerability, capturing the lessons learned. The final implementation successfully demonstrates the originally intended **Server-Side Resource Injection** vulnerability.
+
+1.  **Scaffolding & Integration:** A new standalone Angular application, `angular-ssr`, was created and integrated with the main Juice Shop server via a reverse proxy on the `/ssr` route.
+2.  **Initial Failures (Build & Config):** The initial E2E tests failed due to several configuration issues, including build dependency problems and server port conflicts, which were resolved.
+3.  **Debugging SSR Rendering:** The primary challenge was that imperative DOM manipulations from within the component's `ngOnInit` lifecycle hook were not being serialized into the final HTML in the production SSR build. Multiple attempts failed and were proven ineffective via a "curl-first" debugging workflow:
+    *   `Renderer2` to append elements.
+    *   Declarative `[innerHTML]` and `{{ interpolation }}` bindings.
+    *   Even `DomSanitizer.bypassSecurityTrustHtml`.
+    All these methods resulted in an empty or sanitized output in the raw server response, demonstrating that the default Angular SSR build process is highly secure and optimizes away or sanitizes imperative side effects.
+4.  **The Breakthrough (`RenderMode.Server`):** The key to the solution was the discovery of the `renderMode` option in `app.routes.server.ts`. By default, the production build can use a `Prerender` mode that does not fully execute component logic. By explicitly setting `renderMode: RenderMode.Server` for the target route, we forced the SSR engine to perform a full, stateful render of the component on the server.
+5.  **Final Success (`<link>` Tag Injection):** With `RenderMode.Server` active, the original, more subtle vulnerability could be implemented. The final version of the component injects the `DOCUMENT` token and uses native DOM methods (`document.createElement('link')`, `document.head.appendChild()`) to successfully inject a user-provided stylesheet link into the `<head>` of the initial HTML document.
+6.  **E2E Test Correction (Hydration):** The final hurdle was that the Cypress test (`cy.get()`) still failed even though the `curl` test passed. This was due to **client-side hydration**. The browser would receive the correct, injected HTML, but the client-side Angular app would immediately take control, see the injected `<link>` as a foreign element not present in any template, and remove it. The test was corrected to use `cy.request().its('body')` to assert on the raw HTML response *before* hydration could occur, which finally resulted in a passing test.

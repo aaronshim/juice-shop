@@ -1,0 +1,19 @@
+@use '@angular/material' as mat;
+
+// Import the main application's styles, which includes variables and base styles
+@import '../../frontend/src/styles.scss';
+
+// Define the correct dark theme from the main application
+$bluegrey-lightgreen-primary: mat.m2-define-palette(mat.$m2-blue-grey-palette, 600, 500, 900);
+$bluegrey-lightgreen-accent: mat.m2-define-palette(mat.$m2-light-green-palette, 700, 300, 800);
+$bluegrey-lightgreen-warn: mat.m2-define-palette(mat.$m2-deep-orange-palette);
+$bluegrey-lightgreen-theme: mat.m2-define-dark-theme((
+  color: (
+    primary: $bluegrey-lightgreen-primary,
+    accent: $bluegrey-lightgreen-accent,
+    warn: $bluegrey-lightgreen-warn,
+  ),
+));
+
+// Apply the theme to all Angular Material components in this application
+@include mat.all-component-themes($bluegrey-lightgreen-theme);

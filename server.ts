@@ -31,6 +31,7 @@ import securityTxt from 'express-security.txt'
 import { rateLimit } from 'express-rate-limit'
 import { getStream } from 'file-stream-rotator'
 import type { Request, Response, NextFunction } from 'express'
+import { createProxyMiddleware } from 'http-proxy-middleware'
 
 import { sequelize } from './models'
 import { UserModel } from './models/user'
@@ -276,6 +277,15 @@ restoreOverwrittenFilesWithOriginals().then(() => {
   /* /encryptionkeys directory browsing */
   app.use('/encryptionkeys', serveIndexMiddleware, serveIndex('encryptionkeys', { icons: true, view: 'details' }))
   app.use('/encryptionkeys/:file', serveKeyFiles())
+
+  /* Reverse proxy to newly created SSR app */
+  app.use('/ssr', createProxyMiddleware({
+    target: 'http://localhost:4000',
+    changeOrigin: true,
+    pathRewrite: {
+      '^/ssr': ''
+    }
+  }))
 
   /* /logs directory browsing */ // vuln-code-snippet neutral-line accessLogDisclosureChallenge
   app.use('/support/logs', serveIndexMiddleware, serveIndex('logs', { icons: true, view: 'details' })) // vuln-code-snippet vuln-line accessLogDisclosureChallenge
