@@ -127,8 +127,7 @@ export function HttpLoaderFactory (http: HttpClient) {
     CodeSnippetComponent,
     CodeAreaComponent,
     CodeFixesComponent,
-    MatSearchBarComponent,
-    LiveProductPreviewComponent
+    MatSearchBarComponent
 ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     providers: [

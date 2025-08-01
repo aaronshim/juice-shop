@@ -3,6 +3,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-live-product-preview',
+  standalone: true,
   templateUrl: './live-product-preview.component.html',
   styleUrls: ['./live-product-preview.component.scss']
 })
