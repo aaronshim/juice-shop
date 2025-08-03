@@ -172,6 +172,7 @@
     "prom-client": "^14.2.0",
     "pug": "^3.0.3",
     "replace": "^1.2.2",
+    "safevalues": "^1.2.0",
     "sanitize-filename": "^1.6.3",
     "sanitize-html": "1.4.2",
     "semver": "^7.6.3",
@@ -190,6 +191,7 @@
   },
   "devDependencies": {
     "@cyclonedx/cyclonedx-npm": "^2.0.0||^3.0.0",
+    "@google/gemini-cli": "^0.1.16",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
     "@types/chai": "^4.3.20",
     "@types/clarinet": "^0.12.3",
