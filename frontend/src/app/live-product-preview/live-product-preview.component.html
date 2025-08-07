@@ -11,7 +11,11 @@
   ></textarea>
 
   <h4>Live Preview:</h4>
-  <div class="preview-pane" [innerHTML]="previewContent"></div>
+  <div
+    class="preview-pane"
+    [style.backgroundImage]="safeBackgroundImageStyle"
+    [innerHTML]="previewContent"
+  ></div>
 
   <p class="info">
     Note: This feature demonstrates a self-contained, DOM-based XSS vulnerability.
