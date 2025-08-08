@@ -3,6 +3,7 @@ import { isPlatformServer, CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatCardModule } from '@angular/material/card';
 import { StatusService } from '../services/status.service';
+import { trustedResourceUrl } from 'safevalues'
 
 @Component({
   selector: 'app-profile-status',
@@ -16,10 +17,13 @@ export class ProfileStatus implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private platformId = inject(PLATFORM_ID);
   private statusService = inject(StatusService);
+  x: string | undefined;
 
   status: WritableSignal<SafeHtml | null> = signal(null);
 
   ngOnInit() {
+    const x = trustedResourceUrl`foobar`;
+    this.x = JSON.stringify(x);
     const key = makeStateKey<string>('status');
     const storedStatus = this.transferState.get(key, null);
 
