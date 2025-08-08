@@ -2,10 +2,16 @@
   "name": "insecure-rich-text-editor",
   "version": "1.0.0",
   "description": "A simulated insecure rich text editor.",
-  "main": "index.js",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --outfile=dist/bundle.js --format=esm"
+  },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "dompurify": "3.0.10"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
   }
 }

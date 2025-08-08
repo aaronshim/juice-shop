@@ -70,7 +70,7 @@ class InsecureEditor extends HTMLElement {
 
   getSanitizedHtml() {
     const rawHtml = this.shadowRoot.querySelector('textarea').value;
-    return DOMPurify.sanitize(rawHtml);
+    return DOMPurify.sanitize(rawHtml, {PARSER_MEDIA_TYPE: "application/xhtml+xml"});
   }
 }
 

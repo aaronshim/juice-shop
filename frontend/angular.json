@@ -56,7 +56,9 @@
               "qrcode",
               "dompurify"
             ],
-            "scripts": [],
+            "scripts": [
+              "../insecure-rich-text-editor/dist/bundle.js"
+            ],
             "aot": false,
             "vendorChunk": true,
             "extractLicenses": false,
