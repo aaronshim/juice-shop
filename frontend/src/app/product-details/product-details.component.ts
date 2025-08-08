@@ -69,9 +69,8 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
   }
 
   trackProductView () {
-    // VULNERABILITY: Unsafe string concatenation into a script
     const script = document.createElement('script')
-    // Using a global function name that is more likely to be used in a real-world analytics scenario
+    // Need to make sure a callback is execised for every product, dynamically.
     script.textContent = `var trackView = () => {}; trackView('${this.data.productData.name}');`
     document.body.appendChild(script)
   }

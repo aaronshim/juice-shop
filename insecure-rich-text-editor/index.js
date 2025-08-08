@@ -1,3 +1,5 @@
+import DOMPurify from 'dompurify';
+
 class InsecureEditor extends HTMLElement {
   constructor() {
     super();
@@ -64,6 +66,11 @@ class InsecureEditor extends HTMLElement {
 
   getRawHtml() {
     return this.shadowRoot.querySelector('textarea').value;
+  }
+
+  getSanitizedHtml() {
+    const rawHtml = this.shadowRoot.querySelector('textarea').value;
+    return DOMPurify.sanitize(rawHtml);
   }
 }
 

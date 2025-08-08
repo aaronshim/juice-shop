@@ -53,11 +53,10 @@
               "ethers/lib/ethers",
               "ethers/lib/utils",
               "js-sha3",
-              "qrcode"
+              "qrcode",
+              "dompurify"
             ],
-            "scripts": [
-              "node_modules/insecure-rich-text-editor/index.js"
-            ],
+            "scripts": [],
             "aot": false,
             "vendorChunk": true,
             "extractLicenses": false,

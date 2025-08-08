@@ -18,7 +18,10 @@ export class ProductReviewComponent {
 
   submitReview (): void {
     if (this.editor) {
-      const unsafeHtml = this.editor.nativeElement.getRawHtml()
+      // This preserves the best formatting.
+      // const unsafeHtml = this.editor.nativeElement.getRawHtml()
+      // Or should we have used this?
+      const unsafeHtml = this.editor.nativeElement.getSanitizedHtml()
       // The component trusts the raw HTML and explicitly bypasses sanitization
       this.reviewHtml = this.sanitizer.bypassSecurityTrustHtml(unsafeHtml)
     }

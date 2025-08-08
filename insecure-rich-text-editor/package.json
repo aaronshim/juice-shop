@@ -4,5 +4,8 @@
   "description": "A simulated insecure rich text editor.",
   "main": "index.js",
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dompurify": "3.0.10"
+  }
 }
