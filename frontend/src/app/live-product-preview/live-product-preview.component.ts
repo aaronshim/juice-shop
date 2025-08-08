@@ -23,9 +23,6 @@ export class LiveProductPreviewComponent implements OnChanges {
   }
 
   updatePreview (value: string): void {
-    // THIS IS THE VULNERABLE STEP
-    // In a real vulnerable app, a developer might do this,
-    // thinking they need to preserve some user-intended HTML.
     this.previewContent = this.sanitizer.bypassSecurityTrustHtml(value)
   }
 }

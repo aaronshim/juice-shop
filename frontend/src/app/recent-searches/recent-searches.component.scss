@@ -38,3 +38,31 @@ li {
     border-bottom: none;
   }
 }
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.collapse-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.triangle {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--theme-text);
+  display: inline-block;
+  transition: transform 0.2s ease-in-out;
+}
+
+.triangle.collapsed {
+  transform: rotate(-90deg);
+}

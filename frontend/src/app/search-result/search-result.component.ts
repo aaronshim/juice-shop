@@ -62,6 +62,7 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   private routerSubscription?: Subscription
   public breakpoint: number = 6
   public emptyState = false
+  public recentSearches: Array<{ raw: string, trusted: SafeHtml }> = []
 
   constructor (private readonly deluxeGuard: DeluxeGuard, private readonly dialog: MatDialog, private readonly productService: ProductService,
     private readonly quantityService: QuantityService, private readonly basketService: BasketService, private readonly translateService: TranslateService,
@@ -72,6 +73,7 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   ngAfterViewInit () {
     const products = this.productService.search('')
     const quantities = this.quantityService.getAll()
+    this.loadRecentSearches()
     forkJoin([quantities, products]).subscribe(([quantities, products]) => {
       const dataTable: TableEntry[] = []
       this.tableData = products
@@ -160,6 +162,7 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
       // Add the new search term to the beginning
       recentSearches.unshift(queryParam)
       localStorage.setItem('recentSearches', JSON.stringify(recentSearches.slice(0, 5)))
+      this.loadRecentSearches()
       // End of lab-specific change
       this.ngZone.runOutsideAngular(() => { // vuln-code-snippet hide-start
         this.io.socket().emit('verifyLocalXssChallenge', queryParam)
@@ -181,12 +184,26 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   }
   // vuln-code-snippet end localXssChallenge xssBonusChallenge
 
+  loadRecentSearches () {
+    const searches = localStorage.getItem('recentSearches')
+    if (searches) {
+      const parsedSearches: string[] = JSON.parse(searches)
+      this.recentSearches = parsedSearches.map(term => {
+        return {
+          raw: term,
+          trusted: this.sanitizer.bypassSecurityTrustHtml(term)
+        }
+      })
+    }
+  }
+
   startHackingInstructor (challengeName: string) {
     console.log(`Starting instructions for challenge "${challengeName}"`)
     import(/* webpackChunkName: "tutorial" */ '../../hacking-instructor').then(module => {
       module.startHackingInstructorFor(challengeName)
     })
   }
+
 
   showDetail (element: Product) {
     this.dialog.open(ProductDetailsComponent, {

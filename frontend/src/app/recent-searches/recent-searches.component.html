@@ -1,12 +1,19 @@
 @if (recentSearches.length > 0) {
   <div id="recent-searches-container">
-    <h5>Recent Searches:</h5>
-    <ul>
-      @for (search of recentSearches; track search.raw) {
-        <li>
-          <a [routerLink]="['/search']" [queryParams]="{ q: search.raw }" [innerHTML]="search.trusted"></a>
-        </li>
-      }
-    </ul>
+    <div class="header" (click)="toggleCollapse()">
+      <h5>Recent Searches:</h5>
+      <button class="collapse-button">
+        <span class="triangle" [class.collapsed]="isCollapsed"></span>
+      </button>
+    </div>
+    @if (!isCollapsed) {
+      <ul>
+        @for (search of recentSearches; track search.raw) {
+          <li>
+            <a [routerLink]="['/search']" [queryParams]="{ q: search.raw }" [innerHTML]="search.trusted"></a>
+          </li>
+        }
+      </ul>
+    }
   </div>
 }

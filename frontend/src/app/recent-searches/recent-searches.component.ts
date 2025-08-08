@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core'
-import { DomSanitizer, type SafeHtml } from '@angular/platform-browser'
+import { Component, Input } from '@angular/core'
+import { type SafeHtml } from '@angular/platform-browser'
 import { RouterLink } from '@angular/router'
 
 @Component({
@@ -9,21 +9,11 @@ import { RouterLink } from '@angular/router'
   standalone: true,
   imports: [RouterLink]
 })
-export class RecentSearchesComponent implements OnInit {
-  recentSearches: Array<{ raw: string, trusted: SafeHtml }> = []
+export class RecentSearchesComponent {
+  @Input() recentSearches: Array<{ raw: string, trusted: SafeHtml }> = []
+  isCollapsed = false
 
-  constructor (private readonly sanitizer: DomSanitizer) { }
-
-  ngOnInit (): void {
-    const searches = localStorage.getItem('recentSearches')
-    if (searches) {
-      const parsedSearches: string[] = JSON.parse(searches)
-      this.recentSearches = parsedSearches.map(term => {
-        return {
-          raw: term,
-          trusted: this.sanitizer.bypassSecurityTrustHtml(term)
-        }
-      })
-    }
+  toggleCollapse () {
+    this.isCollapsed = !this.isCollapsed
   }
 }
