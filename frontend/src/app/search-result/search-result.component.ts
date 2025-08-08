@@ -62,7 +62,7 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   private routerSubscription?: Subscription
   public breakpoint: number = 6
   public emptyState = false
-  public recentSearches: Array<{ raw: string, trusted: SafeHtml }> = []
+  public recentSearches: string[] = []
 
   constructor (private readonly deluxeGuard: DeluxeGuard, private readonly dialog: MatDialog, private readonly productService: ProductService,
     private readonly quantityService: QuantityService, private readonly basketService: BasketService, private readonly translateService: TranslateService,
@@ -187,13 +187,7 @@ export class SearchResultComponent implements OnDestroy, AfterViewInit {
   loadRecentSearches () {
     const searches = localStorage.getItem('recentSearches')
     if (searches) {
-      const parsedSearches: string[] = JSON.parse(searches)
-      this.recentSearches = parsedSearches.map(term => {
-        return {
-          raw: term,
-          trusted: this.sanitizer.bypassSecurityTrustHtml(term)
-        }
-      })
+      this.recentSearches = JSON.parse(searches)
     }
   }
 

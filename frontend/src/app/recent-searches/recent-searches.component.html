@@ -7,12 +7,8 @@
       </button>
     </div>
     @if (!isCollapsed) {
-      <ul>
-        @for (search of recentSearches; track search.raw) {
-          <li>
-            <a [routerLink]="['/search']" [queryParams]="{ q: search.raw }" [innerHTML]="search.trusted"></a>
-          </li>
-        }
+      <ul #searchList>
+        <!-- Content will be dynamically inserted here by the component -->
       </ul>
     }
   </div>

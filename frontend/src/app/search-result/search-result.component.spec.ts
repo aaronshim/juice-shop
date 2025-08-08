@@ -386,5 +386,22 @@ describe('SearchResultComponent', () => {
       const expectedSearches = ['new', '1', '2', '3', '4']
       expect(setSpy).toHaveBeenCalledWith('recentSearches', JSON.stringify(expectedSearches))
     })
+
+    it('should load recent searches from localStorage into its own property', () => {
+      const searches = ['test1', 'test2']
+      getSpy.and.returnValue(JSON.stringify(searches))
+
+      component.loadRecentSearches()
+      fixture.detectChanges()
+
+      expect(component.recentSearches).toEqual(searches)
+    })
+
+    it('should call loadRecentSearches when filtering the table', () => {
+      spyOn(component, 'loadRecentSearches')
+      activatedRoute.setQueryParameter('query')
+      component.filterTable()
+      expect(component.loadRecentSearches).toHaveBeenCalled()
+    })
   })
 })
