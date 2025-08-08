@@ -1,0 +1,13 @@
+<div class="profile-card mat-elevation-z4">
+  <mat-card>
+    <mat-card-header>
+      <img mat-card-avatar src="https://placehold.co/100x100" alt="User Avatar">
+      <mat-card-title>JuiceShop User</mat-card-title>
+      <mat-card-subtitle>Status Message</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p>Your current status is:</p>
+      <div class="status-container" [innerHTML]="status()"></div>
+    </mat-card-content>
+  </mat-card>
+</div>
